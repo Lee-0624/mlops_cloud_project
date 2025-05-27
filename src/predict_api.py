@@ -3,6 +3,9 @@ import mlflow, pandas as pd, os
 from pydantic import BaseModel
 from typing import List
 
+# MLflow 추적 URI 설정
+mlflow.set_tracking_uri("http://localhost:5000")
+
 app = FastAPI()
 _ml_model = None
 

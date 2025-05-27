@@ -1,13 +1,4 @@
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PW}
-      POSTGRES_DB: mlflow
-    volumes:
-      - pg:/var/lib/postgresql/data
-
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -23,19 +14,26 @@ services:
   mlflow:
     build: .
     depends_on:
-      - postgres
       - minio
     environment:
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-      AWS_ACCESS_KEY_ID:  ${AWS_ACCESS_KEY_ID}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-    command: >
-      mlflow server
-      --backend-store-uri postgresql://postgres:${MLFLOW_POSTGRES_PW}@postgres/mlflow
-      --default-artifact-root s3://mlflow/
-      --host 0.0.0.0
+    volumes:
+      - mlflow_data:/app/mlflow_data
     ports:
       - "5000:5000"
+      - "8000:8000"
+    command: >
+      bash -c "
+      mlflow server 
+      --backend-store-uri sqlite:///mlflow_data/mlflow.db 
+      --default-artifact-root s3://mlflow/ 
+      --host 0.0.0.0 
+      --port 5000 &
+      sleep 10 &&
+      uvicorn src.predict_api:app --host 0.0.0.0 --port 8000 --reload
+      "
 
   airflow:
     image: apache/airflow:2.9.0-python3.11
@@ -54,14 +52,6 @@ services:
                airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.org || true &&
                exec airflow webserver --port 8080"
 
-  api:
-    build: .
-    depends_on:
-      - mlflow
-    command: uvicorn src.predict_api:app --host 0.0.0.0 --port 8000 --reload
-    ports:
-      - "8000:8000"
-
 volumes:
-  pg:
   minio:
+  mlflow_data:

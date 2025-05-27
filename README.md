@@ -29,7 +29,7 @@
 - **ML 프레임워크**: LightGBM, MLflow
 - **워크플로우 오케스트레이션**: Apache Airflow
 - **API 프레임워크**: FastAPI
-- **데이터베이스**: PostgreSQL
+- **데이터베이스**: SQLite (MLflow 백엔드)
 - **객체 스토리지**: MinIO
 - **컨테이너화**: Docker, Docker Compose
 - **버전 관리**: Git, GitHub
@@ -87,7 +87,7 @@ graph TB
     subgraph "MLOps Platform"
         subgraph "Data Layer"
             MINIO[MinIO<br/>Object Storage]
-            POSTGRES[PostgreSQL<br/>Metadata DB]
+            SQLITE[SQLite<br/>MLflow Backend DB]
         end
         
         subgraph "ML Pipeline"
@@ -98,12 +98,10 @@ graph TB
             EVALUATE[Model Evaluation]
         end
         
-        subgraph "ML Platform"
-            MLFLOW[MLflow<br/>Experiment Tracking<br/>Model Registry]
-        end
+
         
-        subgraph "Serving Layer"
-            API[FastAPI<br/>Prediction Service<br/>predict_api.py]
+        subgraph "ML Platform & Serving"
+            MLFLOW_API[MLflow + FastAPI<br/>Combined Container<br/>Experiment Tracking<br/>Model Registry<br/>Prediction Service]
         end
     end
     
@@ -116,21 +114,18 @@ graph TB
     AIRFLOW --> PREPROCESS
     AIRFLOW --> TRAIN
     AIRFLOW --> EVALUATE
-    AIRFLOW --> API
     
     INGEST --> MINIO
-    TRAIN --> MLFLOW
-    EVALUATE --> MLFLOW
-    MLFLOW --> POSTGRES
-    MLFLOW --> MINIO
-    MLFLOW --> API
+    TRAIN --> MLFLOW_API
+    EVALUATE --> MLFLOW_API
+    MLFLOW_API --> SQLITE
+    MLFLOW_API --> MINIO
     
-    CLIENT --> API
+    CLIENT --> MLFLOW_API
     
     style KMA fill:#e1f5fe
-    style MLFLOW fill:#f3e5f5
+    style MLFLOW_API fill:#f3e5f5
     style AIRFLOW fill:#e8f5e8
-    style API fill:#fff3e0
 ```
 
 <br>
