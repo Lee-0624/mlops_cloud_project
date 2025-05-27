@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from datetime import datetime
-import subprocess, os, mlflow, json
+import subprocess
 
 default_args = {"retries": 1}
 
@@ -17,19 +17,8 @@ def train():
     subprocess.run(["python", "src/train.py"], check=True)
 
 def evaluate():
-    client = mlflow.MlflowClient()
-    exp = client.get_experiment_by_name("weather_24h")
-    runs = client.search_runs(exp.experiment_id, order_by=["metrics.rmse ASC"], max_results=1)
-    best = runs[0]
-    if best.metrics["rmse"] < 3:     # 임계값
-        client.transition_model_version_stage(
-            name="seoul_temp",
-            version=best.info.version,
-            stage="Production",
-            archive_existing_versions=True,
-        )
-        return True
-    return False
+    # 모델 평가 및 프로덕션 배포 결정
+    subprocess.run(["python", "src/evaluate.py"], check=True)
 
 with DAG("weather_daily",
          start_date=datetime(2025, 5, 1),
