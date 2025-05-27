@@ -10,8 +10,8 @@ def ingest():
     subprocess.run(["python", "src/data_ingest.py"], check=True)
 
 def preprocess():
-    # 간단 예시 – 실습에서는 데이터 읽어 전처리 후 /tmp/feature_*.parquet 저장
-    pass
+    # ingest에서 저장된 데이터를 읽어 전처리 후 /tmp/feature_*.parquet 저장
+    subprocess.run(["python", "src/preprocess.py"], check=True)
 
 def train():
     subprocess.run(["python", "src/train.py"], check=True)
