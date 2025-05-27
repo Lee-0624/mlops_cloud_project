@@ -1,10 +1,12 @@
-version: "3.9"
 services:
   postgres:
     image: postgres:16
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${MLFLOW_POSTGRES_PW}
-    volumes: ["pg:/var/lib/postgresql/data"]
+      POSTGRES_DB: mlflow
+    volumes:
+      - pg:/var/lib/postgresql/data
 
   minio:
     image: minio/minio:latest
@@ -12,41 +14,51 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    ports: ["9000:9000", "9001:9001"]
-    volumes: ["minio:/data"]
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
 
   mlflow:
     build: .
+    depends_on:
+      - postgres
+      - minio
     environment:
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_ACCESS_KEY_ID:  ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     command: >
       mlflow server
       --backend-store-uri postgresql://postgres:${MLFLOW_POSTGRES_PW}@postgres/mlflow
       --default-artifact-root s3://mlflow/
       --host 0.0.0.0
-    ports: ["5000:5000"]
+    ports:
+      - "5000:5000"
 
   airflow:
     image: apache/airflow:2.9.0-python3.11
     environment:
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__WEBSERVER__SECRET_KEY=thisissecret
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__WEBSERVER__SECRET_KEY: thisissecret
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
     volumes:
       - ./dags:/opt/airflow/dags
-    ports: ["8080:8080"]
+    ports:
+      - "8080:8080"
     command: >
-      bash -c "airflow db init &&
-               airflow users create --username admin --password admin \
-                 --firstname admin --lastname user --role Admin --email a@b.c &&
-               airflow webserver & airflow scheduler"
+      bash -c "airflow db migrate && exec airflow webserver --port 8080"
 
   api:
     build: .
+    depends_on:
+      - mlflow
     command: uvicorn src.predict_api:app --host 0.0.0.0 --port 8000 --reload
-    ports: ["8000:8000"]
-    depends_on: [mlflow]
+    ports:
+      - "8000:8000"
 
 volumes:
   pg:
