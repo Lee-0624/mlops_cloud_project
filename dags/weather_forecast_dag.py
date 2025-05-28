@@ -19,6 +19,6 @@ with DAG("weather_daily",
     t4 = BashOperator(task_id="evaluate", 
                       bash_command="python /opt/airflow/src/evaluate.py")
     t5 = BashOperator(task_id="reload_api",
-                      bash_command="curl -X POST http://api:8000/reload_model")
+                      bash_command="curl -X POST http://mlflow:8000/reload_model")
 
     t1 >> t2 >> t3 >> t4 >> t5
