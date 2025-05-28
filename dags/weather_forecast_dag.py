@@ -7,18 +7,18 @@ import subprocess
 default_args = {"retries": 1}
 
 def ingest():
-    subprocess.run(["python", "src/data_ingest.py"], check=True)
+    subprocess.run(["python", "/opt/airflow/src/data_ingest.py"], check=True)
 
 def preprocess():
     # ingest에서 저장된 데이터를 읽어 전처리 후 /tmp/feature_*.parquet 저장
-    subprocess.run(["python", "src/preprocess.py"], check=True)
+    subprocess.run(["python", "/opt/airflow/src/preprocess.py"], check=True)
 
 def train():
-    subprocess.run(["python", "src/train.py"], check=True)
+    subprocess.run(["python", "/opt/airflow/src/train.py"], check=True)
 
 def evaluate():
     # 모델 평가 및 프로덕션 배포 결정
-    subprocess.run(["python", "src/evaluate.py"], check=True)
+    subprocess.run(["python", "/opt/airflow/src/evaluate.py"], check=True)
 
 with DAG("weather_daily",
          start_date=datetime(2025, 5, 1),

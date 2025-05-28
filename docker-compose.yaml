@@ -41,12 +41,14 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
       AIRFLOW__WEBSERVER__SECRET_KEY: thisissecret
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'True'
+      KMA_API_KEY: ${KMA_API_KEY}
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
     ports:
       - "8080:8080"
     command: >
-      bash -c "pip install mlflow && 
+      bash -c "pip install mlflow pandas requests lightgbm python-dateutil && 
                airflow db init && 
                airflow db migrate && 
                airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.org || true &&
