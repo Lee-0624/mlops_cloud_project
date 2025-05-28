@@ -26,6 +26,9 @@ services:
       - "8000:8000"
     command: >
       bash -c "
+      pip install awscli &&
+      sleep 15 &&
+      aws --endpoint-url=http://minio:9000 s3 mb s3://mlflow || echo 'Bucket already exists' &&
       mlflow server 
       --backend-store-uri sqlite:///mlflow_data/mlflow.db 
       --default-artifact-root s3://mlflow/ 
@@ -40,9 +43,13 @@ services:
     user: root
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
-      AIRFLOW__WEBSERVER__SECRET_KEY: thisissecret
+      AIRFLOW__WEBSERVER__SECRET_KEY: 'thisissecret'
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: 'True'
       KMA_API_KEY: ${KMA_API_KEY}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
     volumes:
       - ./dags:/opt/airflow/dags
       - ./src:/opt/airflow/src

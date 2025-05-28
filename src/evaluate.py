@@ -6,16 +6,23 @@ def run():
     """
     MLflow에서 최고 성능 모델을 찾아 평가하고 프로덕션 배포 여부를 결정
     """
-    # MLflow 설정
+    # MLflow tracking URI 설정
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
+    print(f"MLflow Tracking URI: {os.getenv('MLFLOW_TRACKING_URI')}")
     
     try:
         client = mlflow.MlflowClient()
+        experiment_name = "weather_24h"
         
-        # 실험 가져오기
-        exp = client.get_experiment_by_name("weather_24h")
+        # 실험 가져오기 (train.py와 동일한 방식)
+        exp = mlflow.get_experiment_by_name(experiment_name)
         if exp is None:
-            print("실험 'weather_24h'를 찾을 수 없습니다.")
+            print(f"실험 '{experiment_name}'를 찾을 수 없습니다.")
+            print("먼저 train.py를 실행하여 모델을 훈련하고 실험을 생성해주세요.")
+            
+            # 디버깅: 모든 실험 목록 출력
+            all_experiments = client.search_experiments()
+            print(f"현재 존재하는 실험들: {[exp.name for exp in all_experiments]}")
             return False
         
         print(f"실험 ID: {exp.experiment_id}")
@@ -29,6 +36,7 @@ def run():
         
         if not runs:
             print("실행된 모델이 없습니다.")
+            print("먼저 train.py를 실행하여 모델을 훈련해주세요.")
             return False
         
         best_run = runs[0]

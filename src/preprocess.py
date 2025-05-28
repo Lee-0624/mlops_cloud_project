@@ -138,6 +138,21 @@ def preprocess_weather_data(df):
     if columns_to_drop:
         processed_df = processed_df.drop(columns=columns_to_drop)
     
+    # LightGBM이 처리할 수 없는 object 타입 컬럼들 제거
+    object_columns = processed_df.select_dtypes(include=['object']).columns.tolist()
+    datetime_columns = ['datetime'] if 'datetime' in processed_df.columns else []
+    
+    # 제거할 컬럼들 (문자열 컬럼들과 datetime 컬럼)
+    columns_to_remove = object_columns + datetime_columns
+    columns_to_remove = [col for col in columns_to_remove if col in processed_df.columns]
+    
+    if columns_to_remove:
+        processed_df = processed_df.drop(columns=columns_to_remove)
+        print(f"LightGBM 호환성을 위해 제거된 컬럼들: {columns_to_remove}")
+    
+    # 수치형 데이터만 남기기
+    processed_df = processed_df.select_dtypes(include=[np.number])
+    
     print(f"전처리 완료. 생성된 피처: {processed_df.columns.tolist()}")
     
     return processed_df
