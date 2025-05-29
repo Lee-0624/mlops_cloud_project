@@ -1,11 +1,15 @@
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from datetime import datetime
+import pytz
 
 default_args = {"retries": 1}
 
+# KST timezone 설정
+kst = pytz.timezone('Asia/Seoul')
+
 with DAG("weather_daily",
-         start_date=datetime(2025, 5, 1),
+         start_date=datetime(2025, 5, 1, tzinfo=kst),
          schedule_interval="0 2 * * *",
          default_args=default_args,
          catchup=False) as dag:
