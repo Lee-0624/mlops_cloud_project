@@ -184,3 +184,5 @@ graph TB
 - [FastAPI 공식 문서](https://fastapi.tiangolo.com/)
 - [LightGBM 공식 문서](https://lightgbm.readthedocs.io/)
 - [Docker Compose 가이드](https://docs.docker.com/compose/)
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AIBootcamp13/mlops-cloud-project-mlops_5)
