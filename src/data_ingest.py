@@ -1,4 +1,4 @@
-import requests, os, pandas as pd, datetime as dt, sys
+import requests, os, pandas as pd, datetime as dt, sys, json
 from dateutil.relativedelta import relativedelta
 
 KMA_API_KEY = os.environ["KMA_API_KEY"]
@@ -20,14 +20,15 @@ def run():
     }
     print(f"BASE_URL: {BASE_URL}, params: {params}")
     r = requests.get(BASE_URL, params=params, timeout=10)
-    print(f"r: {r}")
-    print(f"r.text: {r.text}")
+    r_json = r.json()
+    print("API Response JSON:")
+    print(json.dumps(r_json, indent=2, ensure_ascii=False))
     r.raise_for_status()
-    items = r.json()["response"]["body"]["items"]["item"]
+    items = r_json["response"]["body"]["items"]["item"]
     df = pd.DataFrame(items)
     out = f"/tmp/weather_{base_date}.parquet"
     df.to_parquet(out, index=False)
-    print(out)
+    print(f"Saved to {out}")
 
 if __name__ == "__main__":
     run()

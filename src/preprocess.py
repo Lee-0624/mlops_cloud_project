@@ -33,6 +33,9 @@ def run():
     
     # 데이터 전처리
     processed_df = preprocess_weather_data(df)
+    print(f"전처리된 피처 데이터 shape: {processed_df.shape}")
+    print(f"전처리된 피처 데이터 columns: {processed_df.columns.tolist()}")
+    print(f"전처리된 피처 데이터: {processed_df}")
     
     # 피처 파케이로 저장
     output_file = f"/tmp/feature_{base_date}.parquet"
@@ -153,7 +156,7 @@ def preprocess_weather_data(df):
     # 수치형 데이터만 남기기
     processed_df = processed_df.select_dtypes(include=[np.number])
     
-    print(f"전처리 완료. 생성된 피처: {processed_df.columns.tolist()}")
+    print(f"전처리 완료.")
     
     return processed_df
 
