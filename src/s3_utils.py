@@ -78,7 +78,7 @@ def download_latest_from_s3(bucket_name, prefix_template, date_str=None, fallbac
     """
     # 날짜가 지정되지 않으면 오늘 날짜 사용
     if date_str is None:
-        date_str = (dt.datetime.utcnow() + relativedelta(hours=9)).strftime("%Y%m%d")
+        date_str = (dt.datetime.now(dt.timezone.utc) + relativedelta(hours=9)).strftime("%Y%m%d")
     
     # 지정된 날짜 기준 파일 경로
     object_key = prefix_template.format(date_str)
