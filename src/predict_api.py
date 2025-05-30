@@ -32,10 +32,7 @@ def get_latest_features():
     """S3에서 최신 날씨 관측 피처 데이터를 가져와서 마지막 행 반환"""
     try:
         bucket_name = "mlflow"
-        df = download_latest_from_s3(bucket_name, "preprocess/preprocess_{}.parquet")
-        
-        # 타겟 컬럼 제거하고 피처만 추출
-        feature_df = df.drop(columns=["ta_target", "hm_target"])
+        feature_df = download_latest_from_s3(bucket_name, "preprocess/preprocess_{}.parquet")
         
         # 가장 최신 데이터 (마지막 행) 반환
         latest_features = feature_df.iloc[-1:].copy()

@@ -60,13 +60,6 @@ def preprocess_weather_data(df):
     # 피처 엔지니어링 (new_lightgbm2.py의 build_features 함수와 동일)
     processed_df = build_features(processed_df)
     
-    # 타겟 변수 생성 (24시간 후 예측)
-    processed_df["ta_target"] = processed_df["ta"].shift(-24)   # 24h ahead 기온
-    processed_df["hm_target"] = processed_df["hm"].shift(-24)   # 24h ahead 습도
-    
-    # 결측값이 있는 행 제거
-    processed_df = processed_df.dropna()
-    
     print(f"피처 엔지니어링 완료. 최종 데이터 shape: {processed_df.shape}")
     
     return processed_df
