@@ -5,6 +5,11 @@ import sys
 def run():
     """
     MLflow에서 최고 성능 날씨 관측 모델(기온, 습도)을 찾아 평가하고 프로덕션 배포 여부를 결정
+    
+    Returns:
+        bool: 평가 프로세스 성공 여부
+            - True: 평가 완료 (배포됨 or 배포 조건 미충족으로 배포 안함)
+            - False: 평가 중 오류 발생 (실험 없음, 모델 없음, 기타 예외)
     """
     # MLflow tracking URI 설정
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
@@ -112,13 +117,14 @@ def run():
                 print(f"❌ 일부 모델의 프로덕션 전환에 실패했습니다.")
                 return False
         else:
-            print(f"\n❌ 모든 모델이 프로덕션 배포 조건 미충족: 프로덕션 배포하지 않음")
-            print(f"    - 기온 모델: 현재 프로덕션 모델보다 성능이 낮음")
-            print(f"    - 습도 모델: 현재 프로덕션 모델보다 성능이 낮음")
-            return False
+            print(f"\n✅ 모든 모델 평가 완료: 프로덕션 배포 조건 미충족으로 배포하지 않음")
+            print(f"    - 기온 모델: 현재 프로덕션 모델보다 성능이 낮거나 동일함")
+            print(f"    - 습도 모델: 현재 프로덕션 모델보다 성능이 낮거나 동일함")
+            print(f"    → 이는 정상적인 평가 결과입니다. 기존 프로덕션 모델을 유지합니다.")
+            return True  # 평가 프로세스는 성공적으로 완료됨
             
     except Exception as e:
-        print(f"평가 과정에서 오류 발생: {e}")
+        print(f"❌ 평가 과정에서 오류 발생: {e}")
         return False
 
 def transition_model_to_production(client, model_name, run_id):
@@ -229,9 +235,7 @@ def get_production_model_performance(client):
         
         # 기온 모델의 프로덕션 버전 조회
         try:
-            temp_prod_versions = client.search_model_versions(
-                filter_string="name='seoul_temp' and current_stage='Production'"
-            )
+            temp_prod_versions = client.get_latest_versions("seoul_temp", stages=["Production"])
             if temp_prod_versions:
                 # 프로덕션 모델의 run_id로 성능 조회
                 temp_run_id = temp_prod_versions[0].run_id
@@ -245,9 +249,7 @@ def get_production_model_performance(client):
         
         # 습도 모델의 프로덕션 버전 조회
         try:
-            humid_prod_versions = client.search_model_versions(
-                filter_string="name='seoul_humid' and current_stage='Production'"
-            )
+            humid_prod_versions = client.get_latest_versions("seoul_humid", stages=["Production"])
             if humid_prod_versions:
                 # 프로덕션 모델의 run_id로 성능 조회
                 humid_run_id = humid_prod_versions[0].run_id
@@ -267,5 +269,7 @@ def get_production_model_performance(client):
 
 if __name__ == "__main__":
     success = run()
-    # 평가 결과에 따라 exit code 설정
+    # 평가 프로세스 성공 여부에 따라 exit code 설정
+    # True: 평가 완료 (배포됨/안됨 모두 성공) → exit 0
+    # False: 평가 중 오류 발생 → exit 1  
     sys.exit(0 if success else 1) 
