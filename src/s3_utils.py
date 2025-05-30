@@ -35,7 +35,7 @@ def upload_to_s3(df, bucket_name, object_key):
     
     # 메모리 버퍼에 parquet 파일 생성
     buffer = BytesIO()
-    df.to_parquet(buffer, index=False)
+    df.to_parquet(buffer, index=True)
     buffer.seek(0)
     
     # S3에 업로드

@@ -6,21 +6,24 @@ from s3_utils import download_latest_from_s3, upload_to_s3
 
 def run():
     """
-    S3에서 저장된 날씨 데이터를 읽어서 전처리 후 피처 파케이로 S3에 저장
+    S3에서 저장된 날씨 관측 데이터를 읽어서 전처리 후 피처 파케이로 S3에 저장
     """
     bucket_name = "mlflow"
     
     # 최신 ingest 데이터 로드
     df = download_latest_from_s3(bucket_name, "ingest/ingest_{}.parquet")
     
-    print(f"원본 데이터 shape: {df.shape}")
+    print(f"원본 날씨 관측 데이터 shape: {df.shape}")
     print(f"원본 데이터 columns: {df.columns.tolist()}")
+    print(f"원본 데이터 인덱스 타입: {type(df.index)}")
+    print(f"원본 데이터 인덱스 이름: {df.index.name}")
+    print(f"원본 데이터 첫 5행:\n{df.head()}")
     
-    # 데이터 전처리
+    # 데이터 전처리 및 피처 엔지니어링
     processed_df = preprocess_weather_data(df)
     print(f"전처리된 피처 데이터 shape: {processed_df.shape}")
     print(f"전처리된 피처 데이터 columns: {processed_df.columns.tolist()}")
-    print(f"전처리된 피처 데이터: {processed_df}")
+    print(f"전처리된 피처 데이터: {processed_df.head()}")
     
     # S3에 피처 데이터 저장
     base_date = (dt.datetime.utcnow() + relativedelta(hours=9)).strftime("%Y%m%d")
@@ -33,118 +36,62 @@ def run():
 
 def preprocess_weather_data(df):
     """
-    날씨 데이터 전처리 함수
+    날씨 관측 데이터 전처리 및 피처 엔지니어링
     """
     # 데이터 복사
     processed_df = df.copy()
     
-    # 날짜/시간 관련 피처 생성
-    if 'fcstDate' in processed_df.columns and 'fcstTime' in processed_df.columns:
-        processed_df['datetime'] = pd.to_datetime(
-            processed_df['fcstDate'].astype(str) + processed_df['fcstTime'].astype(str).str.zfill(4),
-            format='%Y%m%d%H%M'
-        )
-        processed_df['hour'] = processed_df['datetime'].dt.hour
-        processed_df['day_of_week'] = processed_df['datetime'].dt.dayofweek
-        processed_df['month'] = processed_df['datetime'].dt.month
+    # datetime 인덱스가 없는 경우 설정 (S3에서 다운로드한 데이터는 인덱스가 제거되어 있음)
+    if not isinstance(processed_df.index, pd.DatetimeIndex):
+        # 'datetime' 컬럼이 있는지 확인하고 인덱스로 설정
+        if 'datetime' in processed_df.columns:
+            processed_df['datetime'] = pd.to_datetime(processed_df['datetime'])
+            processed_df = processed_df.set_index('datetime').sort_index()
+        else:
+            # datetime 컬럼이 없다면 에러 로그 출력
+            print(f"ERROR: datetime 인덱스도 datetime 컬럼도 없습니다. 컬럼: {processed_df.columns.tolist()}")
+            print(f"인덱스 타입: {type(processed_df.index)}")
+            print(f"데이터 샘플:\n{processed_df.head()}")
+            return processed_df.dropna()  # 빈 데이터프레임 반환
     
-    # 수치형 데이터 변환
-    numeric_columns = ['fcstValue']
-    for col in numeric_columns:
-        if col in processed_df.columns:
-            processed_df[col] = pd.to_numeric(processed_df[col], errors='coerce')
+    # 1시간 빈도 보정
+    processed_df = processed_df.asfreq("H")
     
-    # 카테고리별 피처 분리 및 피벗
-    if 'category' in processed_df.columns:
-        # 카테고리별로 피벗하여 각 예보 요소를 별도 컬럼으로 생성
-        pivot_df = processed_df.pivot_table(
-            index=['baseDate', 'baseTime', 'fcstDate', 'fcstTime', 'nx', 'ny'],
-            columns='category',
-            values='fcstValue',
-            aggfunc='first'
-        ).reset_index()
-        
-        # 컬럼명 정리
-        pivot_df.columns.name = None
-        processed_df = pivot_df
+    # 피처 엔지니어링 (new_lightgbm2.py의 build_features 함수와 동일)
+    processed_df = build_features(processed_df)
     
-    # 결측값 처리
-    processed_df = processed_df.fillna(method='ffill').fillna(method='bfill')
+    # 타겟 변수 생성 (24시간 후 예측)
+    processed_df["ta_target"] = processed_df["ta"].shift(-24)   # 24h ahead 기온
+    processed_df["hm_target"] = processed_df["hm"].shift(-24)   # 24h ahead 습도
     
-    # 온도 관련 피처 엔지니어링 (TMP가 있는 경우)
-    if 'TMP' in processed_df.columns:
-        processed_df['TMP'] = pd.to_numeric(processed_df['TMP'], errors='coerce')
-        # 온도 범주화
-        processed_df['temp_category'] = pd.cut(
-            processed_df['TMP'], 
-            bins=[-float('inf'), 0, 10, 20, 30, float('inf')],
-            labels=['매우추움', '추움', '보통', '따뜻함', '더움']
-        )
+    # 결측값이 있는 행 제거
+    processed_df = processed_df.dropna()
     
-    # 습도 관련 피처 (REH가 있는 경우)
-    if 'REH' in processed_df.columns:
-        processed_df['REH'] = pd.to_numeric(processed_df['REH'], errors='coerce')
-        processed_df['humidity_high'] = (processed_df['REH'] > 70).astype(int)
-    
-    # 강수 관련 피처 (PCP가 있는 경우)
-    if 'PCP' in processed_df.columns:
-        # 강수량이 문자열인 경우 처리
-        processed_df['PCP_numeric'] = processed_df['PCP'].replace('강수없음', '0')
-        processed_df['PCP_numeric'] = pd.to_numeric(processed_df['PCP_numeric'], errors='coerce')
-        processed_df['has_precipitation'] = (processed_df['PCP_numeric'] > 0).astype(int)
-    
-    # 풍속 관련 피처 (WSD가 있는 경우)
-    if 'WSD' in processed_df.columns:
-        processed_df['WSD'] = pd.to_numeric(processed_df['WSD'], errors='coerce')
-        processed_df['wind_strong'] = (processed_df['WSD'] > 5).astype(int)
-    
-    # 시간대별 피처
-    if 'datetime' in processed_df.columns:
-        processed_df['is_morning'] = ((processed_df['hour'] >= 6) & (processed_df['hour'] < 12)).astype(int)
-        processed_df['is_afternoon'] = ((processed_df['hour'] >= 12) & (processed_df['hour'] < 18)).astype(int)
-        processed_df['is_evening'] = ((processed_df['hour'] >= 18) & (processed_df['hour'] < 24)).astype(int)
-        processed_df['is_night'] = ((processed_df['hour'] >= 0) & (processed_df['hour'] < 6)).astype(int)
-        processed_df['is_weekend'] = (processed_df['day_of_week'] >= 5).astype(int)
-    
-    # 타겟 변수 생성 (24시간 후 온도 예측을 위한 타겟)
-    if 'TMP' in processed_df.columns and 'datetime' in processed_df.columns:
-        # 24시간 후 온도를 타겟으로 설정
-        processed_df = processed_df.sort_values('datetime')
-        processed_df['target_temp'] = processed_df['TMP'].shift(-24)  # 24시간 후 온도
-        # 타겟이 없는 마지막 24개 행 제거
-        processed_df = processed_df.dropna(subset=['target_temp'])
-    elif 'TMP' in processed_df.columns:
-        # datetime이 없는 경우 단순히 다음 행의 온도를 타겟으로 사용
-        processed_df['target_temp'] = processed_df['TMP'].shift(-1)
-        processed_df = processed_df.dropna(subset=['target_temp'])
-    else:
-        # TMP 컬럼이 없는 경우 더미 타겟 생성 (실제 사용시에는 적절한 타겟 설정 필요)
-        processed_df['target_temp'] = np.random.normal(15, 5, len(processed_df))
-        print("경고: TMP 컬럼이 없어 더미 타겟을 생성했습니다.")
-    
-    # 불필요한 컬럼 제거 (원본 문자열 컬럼들)
-    columns_to_drop = ['PCP'] if 'PCP' in processed_df.columns else []
-    if columns_to_drop:
-        processed_df = processed_df.drop(columns=columns_to_drop)
-    
-    # LightGBM이 처리할 수 없는 object 타입 컬럼들 제거
-    object_columns = processed_df.select_dtypes(include=['object']).columns.tolist()
-    datetime_columns = ['datetime'] if 'datetime' in processed_df.columns else []
-    
-    # 제거할 컬럼들 (문자열 컬럼들과 datetime 컬럼)
-    columns_to_remove = object_columns + datetime_columns
-    columns_to_remove = [col for col in columns_to_remove if col in processed_df.columns]
-    
-    if columns_to_remove:
-        processed_df = processed_df.drop(columns=columns_to_remove)
-        print(f"LightGBM 호환성을 위해 제거된 컬럼들: {columns_to_remove}")
-    
-    # 수치형 데이터만 남기기
-    processed_df = processed_df.select_dtypes(include=[np.number])
-    
-    print(f"전처리 완료.")
+    print(f"피처 엔지니어링 완료. 최종 데이터 shape: {processed_df.shape}")
     
     return processed_df
+
+def build_features(df):
+    """
+    날씨 관측 데이터에서 피처 엔지니어링 수행
+    new_lightgbm2.py의 build_features 함수와 동일한 로직
+    """
+    out = df[["ta", "hm"]].astype({"ta": float, "hm": float})
+    
+    # 시간 파생 변수
+    out["hour"] = out.index.hour
+    out["dow"]  = out.index.dayofweek
+    out["sin_hour"] = np.sin(2*np.pi*out["hour"]/24)
+    out["cos_hour"] = np.cos(2*np.pi*out["hour"]/24)
+    
+    # Lag 및 Rolling 피처
+    for col in ["ta", "hm"]:
+        out[f"{col}_lag1"]   = out[col].shift(1)
+        out[f"{col}_lag24"]  = out[col].shift(24)
+        out[f"{col}_roll3"]  = out[col].rolling(3).mean()
+        out[f"{col}_roll24"] = out[col].rolling(24).mean()
+    
+    return out.dropna()
 
 if __name__ == "__main__":
     run() 
