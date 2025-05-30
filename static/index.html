@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서울 날씨 예측</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .weather-card {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            color: white;
+            box-shadow: 0 10px 20px rgba(116, 185, 255, 0.3);
+        }
+
+        .date-info {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .weather-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+
+        .weather-item {
+            flex: 1;
+            padding: 0 10px;
+        }
+
+        .weather-value {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .weather-label {
+            font-size: 1.1em;
+            opacity: 0.8;
+        }
+
+        .weather-unit {
+            font-size: 0.6em;
+            opacity: 0.8;
+        }
+
+        .predict-btn {
+            background: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(253, 121, 168, 0.3);
+        }
+
+        .predict-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(253, 121, 168, 0.4);
+        }
+
+        .predict-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .message {
+            margin-top: 20px;
+            font-size: 1.1em;
+            font-weight: 500;
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .last-update {
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌤️ 서울 날씨 예측</h1>
+        
+        <button class="predict-btn" onclick="getPrediction()">
+            내일 날씨 예측하기
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>예측 중...</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="weather-card" id="weather-card" style="display: none;">
+            <div class="date-info" id="date-info"></div>
+            
+            <div class="weather-info">
+                <div class="weather-item">
+                    <div class="weather-value" id="temperature">
+                        --<span class="weather-unit">°C</span>
+                    </div>
+                    <div class="weather-label">기온</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-value" id="humidity">
+                        --<span class="weather-unit">%</span>
+                    </div>
+                    <div class="weather-label">습도</div>
+                </div>
+            </div>
+
+            <div class="message" id="message"></div>
+        </div>
+
+        <div class="last-update" id="last-update"></div>
+    </div>
+
+    <script>
+        async function getPrediction() {
+            const button = document.querySelector('.predict-btn');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const weatherCard = document.getElementById('weather-card');
+            const lastUpdate = document.getElementById('last-update');
+
+            // UI 상태 초기화
+            button.disabled = true;
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            weatherCard.style.display = 'none';
+
+            try {
+                const response = await fetch('/predict');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // 예측 결과 표시
+                displayPrediction(data);
+                
+                // 마지막 업데이트 시간 표시
+                const now = new Date();
+                lastUpdate.textContent = `마지막 업데이트: ${now.toLocaleString('ko-KR')}`;
+
+            } catch (err) {
+                console.error('예측 요청 실패:', err);
+                error.textContent = `예측을 가져오는데 실패했습니다: ${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+                button.disabled = false;
+            }
+        }
+
+        function displayPrediction(data) {
+            const weatherCard = document.getElementById('weather-card');
+            const dateInfo = document.getElementById('date-info');
+            const temperature = document.getElementById('temperature');
+            const humidity = document.getElementById('humidity');
+            const message = document.getElementById('message');
+
+            // 날짜 정보 설정
+            const forecastDate = new Date(data.forecast_date);
+            dateInfo.textContent = `${forecastDate.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            })} 예보`;
+
+            // 예측 값 설정
+            temperature.innerHTML = `${data.temperature}<span class="weather-unit">°C</span>`;
+            humidity.innerHTML = `${data.humidity}<span class="weather-unit">%</span>`;
+
+            // 메시지 설정
+            message.textContent = data.message || `내일 예상 기온 ${data.temperature}°C, 습도 ${data.humidity}%`;
+
+            // 카드 표시
+            weatherCard.style.display = 'block';
+        }
+
+        // 페이지 로드 시 자동으로 예측 수행
+        document.addEventListener('DOMContentLoaded', function() {
+            // 약간의 지연 후 자동 로드
+            setTimeout(getPrediction, 1000);
+        });
+
+        // 엔터 키로도 예측 실행
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                getPrediction();
+            }
+        });
+    </script>
+</body>
+</html> 

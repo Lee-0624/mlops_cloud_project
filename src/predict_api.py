@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import mlflow, pandas as pd, os, numpy as np
 import datetime as dt
 from dateutil.relativedelta import relativedelta
@@ -8,8 +10,17 @@ from src.s3_utils import download_latest_from_s3
 mlflow.set_tracking_uri("http://localhost:5000")
 
 app = FastAPI()
+
+# Static 파일 마운트
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 _temp_model = None
 _humid_model = None
+
+@app.get("/")
+def read_root():
+    """루트 경로에서 index.html 반환"""
+    return FileResponse('static/index.html')
 
 def load_models():
     """프로덕션 모델들 로드"""
