@@ -1,12 +1,12 @@
 import requests, os, pandas as pd, datetime as dt, sys, json
 from dateutil.relativedelta import relativedelta
+from s3_utils import upload_to_s3
 
 KMA_API_KEY = os.environ["KMA_API_KEY"]
 
 # BASE_URL = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst"
 # BASE_URL = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst"
 BASE_URL =  "https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst"
-
 
 def run():
     base_date = (dt.datetime.utcnow() + relativedelta(hours=9)).strftime("%Y%m%d")
@@ -26,9 +26,11 @@ def run():
     r.raise_for_status()
     items = r_json["response"]["body"]["items"]["item"]
     df = pd.DataFrame(items)
-    out = f"/tmp/weather_{base_date}.parquet"
-    df.to_parquet(out, index=False)
-    print(f"Saved to {out}")
+    
+    # MinIO S3에 저장
+    bucket_name = "mlflow"
+    object_key = f"ingest/ingest_{base_date}.parquet"
+    upload_to_s3(df, bucket_name, object_key)
 
 if __name__ == "__main__":
     run()

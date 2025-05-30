@@ -2,32 +2,17 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from dateutil.relativedelta import relativedelta
-import os
-import glob
+from s3_utils import download_latest_from_s3, upload_to_s3
 
 def run():
     """
-    ingest에서 저장된 날씨 데이터를 읽어서 전처리 후 피처 파케이로 저장
+    S3에서 저장된 날씨 데이터를 읽어서 전처리 후 피처 파케이로 S3에 저장
     """
-    # 오늘 날짜 기준으로 ingest에서 저장된 파일 찾기
-    base_date = (dt.datetime.utcnow() + relativedelta(hours=9)).strftime("%Y%m%d")
-    input_file = f"/tmp/weather_{base_date}.parquet"
+    bucket_name = "mlflow"
     
-    print(f"전처리 시작: {input_file}")
+    # 최신 ingest 데이터 로드
+    df = download_latest_from_s3(bucket_name, "ingest/ingest_{}.parquet")
     
-    # ingest에서 저장된 파케이 파일 읽기
-    if not os.path.exists(input_file):
-        print(f"입력 파일이 존재하지 않습니다: {input_file}")
-        # 가장 최근 파일 찾기
-        pattern = "/tmp/weather_*.parquet"
-        files = glob.glob(pattern)
-        if files:
-            input_file = max(files, key=os.path.getctime)
-            print(f"가장 최근 파일 사용: {input_file}")
-        else:
-            raise FileNotFoundError(f"날씨 데이터 파일을 찾을 수 없습니다: {pattern}")
-    
-    df = pd.read_parquet(input_file)
     print(f"원본 데이터 shape: {df.shape}")
     print(f"원본 데이터 columns: {df.columns.tolist()}")
     
@@ -37,13 +22,14 @@ def run():
     print(f"전처리된 피처 데이터 columns: {processed_df.columns.tolist()}")
     print(f"전처리된 피처 데이터: {processed_df}")
     
-    # 피처 파케이로 저장
-    output_file = f"/tmp/feature_{base_date}.parquet"
-    processed_df.to_parquet(output_file, index=False)
-    print(f"전처리된 피처 데이터 저장 완료: {output_file}")
+    # S3에 피처 데이터 저장
+    base_date = (dt.datetime.utcnow() + relativedelta(hours=9)).strftime("%Y%m%d")
+    output_object_key = f"preprocess/preprocess_{base_date}.parquet"
+    upload_to_s3(processed_df, bucket_name, output_object_key)
+    print(f"전처리된 피처 데이터 저장 완료: s3://{bucket_name}/{output_object_key}")
     print(f"처리된 데이터 shape: {processed_df.shape}")
     
-    return output_file
+    return f"s3://{bucket_name}/{output_object_key}"
 
 def preprocess_weather_data(df):
     """

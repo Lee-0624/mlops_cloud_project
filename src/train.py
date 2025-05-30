@@ -1,6 +1,6 @@
 import lightgbm as lgb, pandas as pd, mlflow, os, numpy as np
 from sklearn.metrics import mean_squared_error
-from pathlib import Path
+from s3_utils import download_latest_from_s3
 
 # MLflow tracking URI 설정
 mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
@@ -30,8 +30,9 @@ except Exception as e:
     raise
 
 def load_feature_df() -> pd.DataFrame:
-    path = sorted(Path("/tmp").glob("feature_*.parquet"))[-1]
-    return pd.read_parquet(path)
+    """S3에서 가장 최신 전처리된 데이터를 로드"""
+    bucket_name = "mlflow"
+    return download_latest_from_s3(bucket_name, "preprocess/preprocess_{}.parquet")
 
 def main():
     df = load_feature_df()
