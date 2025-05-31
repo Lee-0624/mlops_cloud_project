@@ -313,7 +313,7 @@ $2
 
             const needsWater = displayData.temperature >= 30 || displayData.humidity <= 30;
             weatherCard.style.background = needsWater ? 'linear-gradient(to bottom, rgba(200,30,30,0.95), rgba(200,30,30,0.1))' : 'linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)';
-            weatherImage.src = needsWater ? 'water_please.png' : 'happy_plant.png';
+            weatherImage.src = needsWater ? '/static/water_please.png' : '/static/happy_plant.png';
             weatherImage.style.display = 'block';
 
             weatherCard.style.display = 'block';
