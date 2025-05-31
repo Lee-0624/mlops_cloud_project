@@ -13,6 +13,9 @@ mlflow.set_tracking_uri("http://localhost:5000")
 
 app = FastAPI()
 
+# 정적 파일 서비스 설정 (반드시 FastAPI 선언 후에 위치)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # CORS 미들웨어 설정
 app.add_middleware(
     CORSMiddleware,
