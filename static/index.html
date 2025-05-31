@@ -52,11 +52,12 @@
             font-size: 1.2em;
             margin-bottom: 20px;
             opacity: 0.9;
+            word-break: keep-all;
         }
 
         .weather-info {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             margin: 20px 0;
         }
 
@@ -194,15 +195,18 @@
         }
 
         @media (max-width: 600px) {
-$1
-$2
-.weather-image {
-    max-height: 75px;
-    height: auto;
-    width: auto;
-    display: block;
-    margin: 20px auto 0;
-}
+            h1 {
+                font-size: 1.5em;
+                white-space: normal;
+            }
+
+            .weather-image {
+                max-height: 150px;
+                height: auto;
+                width: auto;
+                display: block;
+                margin: 20px auto 0;
+            }
         }
     </style>
 </head>
