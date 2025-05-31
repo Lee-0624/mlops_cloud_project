@@ -1,15 +1,26 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import mlflow, pandas as pd, os, numpy as np
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 from src.s3_utils import download_latest_from_s3
 
+
 # MLflow 추적 URI 설정
 mlflow.set_tracking_uri("http://localhost:5000")
 
 app = FastAPI()
+
+# CORS 미들웨어 설정
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 또는 ["http://localhost:5500"] 등 HTML 실행 도메인으로 제한 가능
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Static 파일 마운트
 app.mount("/static", StaticFiles(directory="static"), name="static")

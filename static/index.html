@@ -34,8 +34,9 @@
         h1 {
             color: #333;
             margin-bottom: 30px;
-            font-size: 2.5em;
+            font-size: 2em;
             font-weight: 300;
+            white-space: nowrap;
         }
 
         .weather-card {
@@ -143,17 +144,72 @@
             border-radius: 10px;
         }
 
-        .last-update {
+        .weather-image {
+            max-height: 150px;
+            height: auto;
+            width: auto;
+            display: block;
+            margin: 20px auto 0;
+        }
+
+        .toggle-container {
             margin-top: 20px;
-            font-size: 0.9em;
-            color: #666;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-container input[type="checkbox"] {
+            width: 50px;
+            height: 26px;
+            appearance: none;
+            background: #ccc;
+            outline: none;
+            border-radius: 50px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-container input[type="checkbox"]:checked {
+            background: #4cd964;
+        }
+
+        .toggle-container input[type="checkbox"]::before {
+            content: "";
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            background: white;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-container input[type="checkbox"]:checked::before {
+            transform: translateX(24px);
+        }
+
+        @media (max-width: 600px) {
+$1
+$2
+.weather-image {
+    max-height: 75px;
+    height: auto;
+    width: auto;
+    display: block;
+    margin: 20px auto 0;
+}
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🌤️ 서울 날씨 예측</h1>
-        
+
         <button class="predict-btn" onclick="getPrediction()">
             내일 날씨 예측하기
         </button>
@@ -167,7 +223,7 @@
 
         <div class="weather-card" id="weather-card" style="display: none;">
             <div class="date-info" id="date-info"></div>
-            
+
             <div class="weather-info">
                 <div class="weather-item">
                     <div class="weather-value" id="temperature">
@@ -183,48 +239,41 @@
                 </div>
             </div>
 
-            <div class="message" id="message"></div>
+            <img id="weather-image" class="weather-image" src="" alt="날씨 상태 이미지" style="display:none;">
         </div>
 
-        <div class="last-update" id="last-update"></div>
+        <div class="toggle-container">
+            <label for="simulateToggle">물이 필요한 기상 재연하기</label>
+            <input type="checkbox" id="simulateToggle">
+        </div>
     </div>
 
     <script>
+        let latestData = null;
+        let originalTemp = null;
+        let originalHumidity = null;
+
         async function getPrediction() {
             const button = document.querySelector('.predict-btn');
             const loading = document.getElementById('loading');
             const error = document.getElementById('error');
             const weatherCard = document.getElementById('weather-card');
-            const lastUpdate = document.getElementById('last-update');
+            const simulateToggle = document.getElementById('simulateToggle');
 
-            // UI 상태 초기화
             button.disabled = true;
             loading.style.display = 'block';
             error.style.display = 'none';
             weatherCard.style.display = 'none';
 
             try {
-                const response = await fetch('/predict');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
+                const response = await fetch('http://localhost:8000/predict');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
-
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                // 예측 결과 표시
+                latestData = data;
+                originalTemp = data.temperature;
+                originalHumidity = data.humidity;
                 displayPrediction(data);
-                
-                // 마지막 업데이트 시간 표시
-                const now = new Date();
-                lastUpdate.textContent = `마지막 업데이트: ${now.toLocaleString('ko-KR')}`;
-
             } catch (err) {
-                console.error('예측 요청 실패:', err);
                 error.textContent = `예측을 가져오는데 실패했습니다: ${err.message}`;
                 error.style.display = 'block';
             } finally {
@@ -233,45 +282,53 @@
             }
         }
 
-        function displayPrediction(data) {
+        function displayPrediction(data, simulateBad = false) {
             const weatherCard = document.getElementById('weather-card');
             const dateInfo = document.getElementById('date-info');
             const temperature = document.getElementById('temperature');
             const humidity = document.getElementById('humidity');
-            const message = document.getElementById('message');
+            const weatherImage = document.getElementById('weather-image');
 
-            // 날짜 정보 설정
-            const forecastDate = new Date(data.forecast_date);
+
+            const displayData = { ...data };
+
+            if (simulateBad) {
+                if (data.temperature < 30) {
+                    displayData.temperature = 31;
+                } else {
+                    displayData.humidity = 29;
+                }
+            } else {
+                displayData.temperature = originalTemp;
+                displayData.humidity = originalHumidity;
+            }
+
+            const forecastDate = new Date(displayData.forecast_date);
             dateInfo.textContent = `${forecastDate.toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                weekday: 'long'
+                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
             })} 예보`;
 
-            // 예측 값 설정
-            temperature.innerHTML = `${data.temperature}<span class="weather-unit">°C</span>`;
-            humidity.innerHTML = `${data.humidity}<span class="weather-unit">%</span>`;
+            temperature.innerHTML = `${displayData.temperature}<span class="weather-unit">°C</span>`;
+            humidity.innerHTML = `${displayData.humidity}<span class="weather-unit">%</span>`;
 
-            // 메시지 설정
-            message.textContent = data.message || `내일 예상 기온 ${data.temperature}°C, 습도 ${data.humidity}%`;
+            const needsWater = displayData.temperature >= 30 || displayData.humidity <= 30;
+            weatherCard.style.background = needsWater ? 'linear-gradient(to bottom, rgba(200,30,30,0.95), rgba(200,30,30,0.1))' : 'linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)';
+            weatherImage.src = needsWater ? 'water_please.png' : 'happy_plant.png';
+            weatherImage.style.display = 'block';
 
-            // 카드 표시
             weatherCard.style.display = 'block';
         }
 
-        // 페이지 로드 시 자동으로 예측 수행
-        document.addEventListener('DOMContentLoaded', function() {
-            // 약간의 지연 후 자동 로드
+        document.addEventListener('DOMContentLoaded', function () {
             setTimeout(getPrediction, 1000);
+            const toggle = document.getElementById('simulateToggle');
+            toggle.addEventListener('change', () => {
+                if (latestData) displayPrediction(latestData, toggle.checked);
+            });
         });
 
-        // 엔터 키로도 예측 실행
         document.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                getPrediction();
-            }
+            if (e.key === 'Enter') getPrediction();
         });
     </script>
 </body>
-</html> 
