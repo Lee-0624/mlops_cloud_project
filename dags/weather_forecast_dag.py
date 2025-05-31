@@ -33,5 +33,9 @@ with DAG("weather_daily",
     # 예측 API 모델 재로드
     t5 = BashOperator(task_id="reload_api",
                       bash_command="curl -X POST http://mlflow:8000/reload_model")
+    
+    # FastAPI의 /predict API를 호출하여 SQLite DB(predictions.db)에 예측 결과 저장
+    t6 = BashOperator(task_id="predict",
+                      bash_command="curl http://mlflow:8000/predict")
 
-    t1 >> t2 >> t3 >> t4 >> t5
+    t1 >> t2 >> t3 >> t4 >> t5 >> t6

@@ -253,86 +253,92 @@
     </div>
 
     <script>
-        let latestData = null;
-        let originalTemp = null;
-        let originalHumidity = null;
+    let latestData = null;
+    let originalTemp = null;
+    let originalHumidity = null;
 
-        async function getPrediction() {
-            const button = document.querySelector('.predict-btn');
-            const loading = document.getElementById('loading');
-            const error = document.getElementById('error');
-            const weatherCard = document.getElementById('weather-card');
-            const simulateToggle = document.getElementById('simulateToggle');
+    async function fetchLatestPrediction() {
+        const button = document.querySelector('.predict-btn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const weatherCard = document.getElementById('weather-card');
+        const simulateToggle = document.getElementById('simulateToggle');
 
-            button.disabled = true;
-            loading.style.display = 'block';
-            error.style.display = 'none';
-            weatherCard.style.display = 'none';
+        button.disabled = true;
+        loading.style.display = 'block';
+        error.style.display = 'none';
+        weatherCard.style.display = 'none';
 
-            try {
-                const response = await fetch('http://localhost:8000/predict');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                latestData = data;
-                originalTemp = data.temperature;
-                originalHumidity = data.humidity;
-                displayPrediction(data);
-            } catch (err) {
-                error.textContent = `예측을 가져오는데 실패했습니다: ${err.message}`;
-                error.style.display = 'block';
-            } finally {
-                loading.style.display = 'none';
-                button.disabled = false;
-            }
+        try {
+            const response = await fetch('http://localhost:8000/api/latest');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const data = await response.json();
+            latestData = data;
+            originalTemp = data.temperature;
+            originalHumidity = data.humidity;
+            displayPrediction(data);
+        } catch (err) {
+            error.textContent = `예측 데이터를 불러오는 데 실패했습니다: ${err.message}`;
+            error.style.display = 'block';
+        } finally {
+            loading.style.display = 'none';
+            button.disabled = false;
         }
+    }
 
-        function displayPrediction(data, simulateBad = false) {
-            const weatherCard = document.getElementById('weather-card');
-            const dateInfo = document.getElementById('date-info');
-            const temperature = document.getElementById('temperature');
-            const humidity = document.getElementById('humidity');
-            const weatherImage = document.getElementById('weather-image');
+    function displayPrediction(data, simulateBad = false) {
+        const weatherCard = document.getElementById('weather-card');
+        const dateInfo = document.getElementById('date-info');
+        const temperature = document.getElementById('temperature');
+        const humidity = document.getElementById('humidity');
+        const weatherImage = document.getElementById('weather-image');
 
+        const displayData = { ...data };
 
-            const displayData = { ...data };
-
-            if (simulateBad) {
-                if (data.temperature < 30) {
-                    displayData.temperature = 31;
-                } else {
-                    displayData.humidity = 29;
-                }
+        if (simulateBad) {
+            if (data.temperature < 30) {
+                displayData.temperature = 31;
             } else {
-                displayData.temperature = originalTemp;
-                displayData.humidity = originalHumidity;
+                displayData.humidity = 29;
             }
-
-            const forecastDate = new Date(displayData.forecast_date);
-            dateInfo.textContent = `${forecastDate.toLocaleDateString('ko-KR', {
-                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
-            })} 예보`;
-
-            temperature.innerHTML = `${displayData.temperature}<span class="weather-unit">°C</span>`;
-            humidity.innerHTML = `${displayData.humidity}<span class="weather-unit">%</span>`;
-
-            const needsWater = displayData.temperature >= 30 || displayData.humidity <= 30;
-            weatherCard.style.background = needsWater ? 'linear-gradient(to bottom, rgba(200,30,30,0.95), rgba(200,30,30,0.1))' : 'linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)';
-            weatherImage.src = needsWater ? '/static/water_please.png' : '/static/happy_plant.png';
-            weatherImage.style.display = 'block';
-
-            weatherCard.style.display = 'block';
+        } else {
+            displayData.temperature = originalTemp;
+            displayData.humidity = originalHumidity;
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            setTimeout(getPrediction, 1000);
-            const toggle = document.getElementById('simulateToggle');
-            toggle.addEventListener('change', () => {
-                if (latestData) displayPrediction(latestData, toggle.checked);
-            });
-        });
+        const forecastDate = new Date(displayData.forecast_date);
+        dateInfo.textContent = `${forecastDate.toLocaleDateString('ko-KR', {
+            year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+        })} 예보`;
 
-        document.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') getPrediction();
+        temperature.innerHTML = `${displayData.temperature}<span class="weather-unit">°C</span>`;
+        humidity.innerHTML = `${displayData.humidity}<span class="weather-unit">%</span>`;
+
+        const needsWater = displayData.temperature >= 30 || displayData.humidity <= 30;
+        weatherCard.style.background = needsWater
+            ? 'linear-gradient(to bottom, rgba(200,30,30,0.95), rgba(200,30,30,0.1))'
+            : 'linear-gradient(135deg, #74b9ff 0%, #0984e3 100%)';
+        weatherImage.src = needsWater ? '/static/water_please.png' : '/static/happy_plant.png';
+        weatherImage.style.display = 'block';
+
+        weatherCard.style.display = 'block';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(fetchLatestPrediction, 1000);
+        const toggle = document.getElementById('simulateToggle');
+        toggle.addEventListener('change', () => {
+            if (latestData) displayPrediction(latestData, toggle.checked);
         });
-    </script>
+    });
+
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') fetchLatestPrediction();
+    });
+
+    // 버튼 onclick 이벤트 바인딩
+    function getPrediction() {
+        fetchLatestPrediction();
+    }
+</script>
 </body>
