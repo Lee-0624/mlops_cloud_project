@@ -204,8 +204,8 @@
             weatherCard.style.display = 'none';
 
             try {
-                const response = await fetch('/predict');
-                
+                const response = await fetch('http://localhost:8000/predict');
+
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
