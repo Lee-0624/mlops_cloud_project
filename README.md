@@ -36,10 +36,10 @@
 
 ## 👨‍👩‍👦‍👦 팀 구성원
 
-| ![류지헌](https://avatars.githubusercontent.com/u/10584296?v=4) | ![김태현](https://avatars.githubusercontent.com/u/7031901?v=4) | ![박성진](https://avatars.githubusercontent.com/u/204808507?v=4) | ![채병기](https://avatars.githubusercontent.com/u/1531867?v=4) | ![이준석](https://avatars.githubusercontent.com/u/180180844?v=4) | ![이상현](https://img.shields.io/badge/👤-이상현-lightgray) |
-| :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :----------------------------------------------------------: |
-|            [류지헌](https://github.com/mahomi)             |            [김태현](https://github.com/huefilm)             |            [박성진](https://github.com/psj2024p)             |            [채병기](https://github.com/avatar196kc)             |            [이준석](https://github.com/Lee-0624)             |                        **이상현**                        |
-|                            **팀장**(ML엔지니어)                             |                            **ML엔지니어**                             |                            **ML엔지니어**                             |                            **ML엔지니어**                             |                            **ML엔지니어**                             |                       **ML엔지니어**                       |
+| ![류지헌](https://avatars.githubusercontent.com/u/10584296?v=4) | ![김태현](https://avatars.githubusercontent.com/u/7031901?v=4) | ![박성진](https://avatars.githubusercontent.com/u/204808507?v=4) | ![채병기](https://avatars.githubusercontent.com/u/1531867?v=4) | ![이준석](https://avatars.githubusercontent.com/u/180180844?v=4) | ![이상현](https://avatars.githubusercontent.com/u/48020255?v=4) |
+| :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: | :--------------------------------------------------------------: |
+|            [류지헌](https://github.com/mahomi)             |            [김태현](https://github.com/huefilm)             |            [박성진](https://github.com/psj2024p)             |            [채병기](https://github.com/avatar196kc)             |            [이준석](https://github.com/Lee-0624)             |                        [이상현](https://github.com/yourshlee)                        |
+|                            **팀장**(ML엔지니어)                             |                            **ML엔지니어**                             |                            **ML엔지니어**                             |                            **ML엔지니어**                             |                            **ML엔지니어**                             |                       **ML엔지니어**                             |
 | 전체 아키텍처 설계<br/>Airflow 파이프라인<br/>Docker 환경 구축 | 데이터 수집 & 전처리<br/>ASOS API 연동<br/>S3 스토리지 관리 | LightGBM 모델 개발<br/>피처 엔지니어링<br/>모델 성능 최적화 | FastAPI 개발<br/>웹 UI 구현<br/>예측 서비스 API | MLflow 운영<br/>모델 배포 자동화<br/>DB 관리 | 후반 합류<br/>시스템 테스트<br/>문서화 지원 |
 
 <br>
@@ -129,13 +129,20 @@ mlops-weather-prediction/
   - 모바일 최적화 UI/UX
 
 ### 🔄 자동화 ML 파이프라인
-매일 새벽 2시 실행되는 6단계 워크플로우:
-1. **t1**: 기상 데이터 수집 (`data_ingest.py`)
-2. **t2**: 데이터 전처리 (`preprocess.py`) 
-3. **t3**: 모델 훈련 (`train.py`)
-4. **t4**: 모델 평가 (`evaluate.py`)
-5. **t5**: API 모델 리로드
-6. **t6**: 예측 실행 및 SQLite 저장
+```mermaid
+graph LR
+    A[새벽 2시] --> B[데이터 수집]
+    B --> C[전처리]
+    C --> D[모델 훈련]
+    D --> E[성능 평가]
+    E --> F{성능 개선?}
+    F -->|Yes| G[프로덕션 배포]
+    F -->|No| H[기존 모델 유지]
+    G --> I[API 리로드]
+    H --> I
+    I --> J[예측 실행]
+    J --> K[DB 저장]
+```
 
 ### 📊 데이터 관리
 - **MinIO S3 스토리지**: 수집/전처리 데이터의 버전별 관리
@@ -260,105 +267,20 @@ curl http://localhost:8000/predict
 
 <br>
 
-## 📊 주요 성능 지표
 
-### 🎯 모델 성능
-- **기온 예측 RMSE**: ~2.5°C (24시간 예측)
-- **습도 예측 RMSE**: ~15% (24시간 예측)
-- **예측 정확도**: 실제 기상 변화 패턴 80% 이상 반영
-- **API 응답 시간**: < 500ms
-
-### 📈 시스템 성능
-- **데이터 처리 속도**: 30일 이력 데이터 3분 내 처리
-- **모델 훈련 시간**: 2000 에스티메이터 기준 5분 내 완료  
-- **자동화 안정성**: 99% 성공률 (연속 30일 운영 기준)
-- **리소스 사용량**: CPU 2코어, RAM 4GB로 안정 운영
-
-<br>
-
-## 🚨 트러블슈팅
-
-### 1. MLflow 모델 등록 권한 오류
-
-**증상**: `Permission denied` 또는 모델 등록 실패
-```bash
-ERROR: Failed to register model: Permission denied
-```
-
-**해결**:
-```bash
-# 1. Docker 볼륨 권한 확인
-docker-compose down
-sudo chown -R $USER:$USER ./
-
-# 2. MinIO 연결 설정 확인
-docker-compose logs mlflow | grep "S3"
-
-# 3. 환경 변수 재설정
-docker-compose up -d --force-recreate mlflow
-```
-
-### 2. ASOS API 응답 지연/오류
-
-**증상**: `timeout` 또는 `HTTP 500` 에러
-```python
-requests.exceptions.Timeout: Request timed out after 15 seconds
-```
-
-**해결**:
-- `data_ingest.py`에서 재시도 로직 활용
-- requests 라이브러리에 적절한 타임아웃 설정 (15초)
-- Airflow retry 로직으로 일시적 실패 대응
-
-### 3. Airflow DAG 실행 실패
-
-**증상**: DAG가 빨간색으로 표시되거나 태스크 실패
-```bash
-Task failed with error: ModuleNotFoundError: No module named 'lightgbm'
-```
-
-**해결**:
-```bash
-# 1. Airflow 컨테이너 재빌드
-docker-compose down
-docker-compose build --no-cache airflow
-docker-compose up -d
-
-# 2. 의존성 수동 설치 확인
-docker-compose exec airflow pip list | grep -E "(mlflow|lightgbm|pandas)"
-```
-
-<br>
-
-## 📈 확장 가능성
-
-### 🌍 지역 확대
-- **다중 지역 지원**: 서울 외 전국 주요 도시 확장
-- **지역별 모델**: 지역 특성을 반영한 개별 모델 운영
-
-### 🤖 AI 모델 고도화  
-- **앙상블 모델**: LightGBM + XGBoost + Neural Network 결합
-- **시계열 특화**: LSTM, GRU 등 딥러닝 모델 적용
-
-### 🏢 서비스 확장
-- **IoT 연동**: 스마트 화분, 자동 급수 시스템 연계
-- **모바일 앱**: 푸시 알림, 위치 기반 서비스
-
-<br>
-
-## 📌 프로젝트 회고 (10일간의 집중 개발)
+## 📌 프로젝트 회고
 
 ### 🎯 류지헌 (팀장) - MLOps 아키텍트
 > *"단순한 예측 모델을 넘어 실제 사용자가 체감할 수 있는 MLOps 플랫폼 구축"*
 
 - **MLOps 파이프라인 설계**: 데이터 수집부터 서빙까지 엔드투엔드 자동화 구현
 - **Docker 마이크로서비스**: 각 컴포넌트의 독립적 배포 및 확장 가능한 아키텍처 설계
-- **학습 성과**: 프로덕션 환경에서의 ML 시스템 운영 경험과 DevOps 역량 향상
+- **학습 성과**: 프로덕션 환경에서의 ML 시스템 운영 경험과 MLOps 역량 향상
 
 ### 🔧 김태현 - 데이터 엔지니어  
 > *"안정적인 데이터 파이프라인이 좋은 AI 서비스의 기반이 된다"*
 
-- **ASOS API 마스터링**: 기상청 공공 API의 특성 파악 및 안정적 데이터 수집 파이프라인 구축
+- **ASOS API 활용**: 기상청 공공 API의 특성 파악 및 안정적 데이터 수집 파이프라인 구축
 - **S3 스토리지 최적화**: MinIO 기반 오브젝트 스토리지로 효율적인 데이터 버전 관리 구현
 - **학습 성과**: 대용량 데이터 처리 및 분산 스토리지 활용 역량 확보
 
@@ -372,8 +294,8 @@ docker-compose exec airflow pip list | grep -E "(mlflow|lightgbm|pandas)"
 ### 🌐 채병기 - 풀스택 개발자
 > *"사용자 경험을 고려한 ML 서비스 설계의 중요성"*
 
-- **FastAPI 마스터**: 비동기 처리 및 자동 API 문서화를 활용한 고성능 서비스 개발
-- **반응형 웹 UI**: 모바일 퍼스트 디자인으로 다양한 디바이스에서 일관된 UX 제공  
+- **FastAPI 전문 활용**: 비동기 처리 및 자동 API 문서화를 활용한 고성능 서비스 개발
+- **반응형 웹 UI**: 반응형 웹 디자인으로 여러 디바이스에서 일관된 UX 제공  
 - **학습 성과**: ML 모델과 웹 서비스의 효율적 연동 방법 및 사용자 중심 설계 경험
 
 ### 🔬 이준석 - MLOps 엔지니어
@@ -391,7 +313,7 @@ docker-compose exec airflow pip list | grep -E "(mlflow|lightgbm|pandas)"
 - **문서화 지원**: 프로젝트 문서 정리 및 사용자 가이드 작성으로 팀 기여
 - **학습 성과**: 완성도 높은 MLOps 시스템 구조 학습 및 협업 프로세스 이해
 
-### 🏆 팀 전체 성과 (10일간의 성취)
+### 🏆 팀 전체 성과
 - **기술적 도전**: 7개 오픈소스 기술 스택의 효율적 통합 및 상호 연동 
 - **실용성 검증**: 실제 서비스 가능한 수준의 MLOps 플랫폼 구축 완료
 - **확장성 설계**: 마이크로서비스 아키텍처로 향후 기능 확장 기반 마련
