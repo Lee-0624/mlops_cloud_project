@@ -251,10 +251,11 @@ docker-compose logs -f
 ```
 
 ### 4. 서비스 접속
-- **웹 대시보드**: http://localhost:8000 (예측 결과 및 식물 관리)
-- **MLflow UI**: http://localhost:5000 (실험 추적)
 - **Airflow UI**: http://localhost:8080 (admin/admin)
+- **MLflow UI**: http://localhost:5000 (실험 추적)
 - **MinIO Console**: http://localhost:9001 (minio/minio123)
+- **FastAPI Docs**: http://localhost:8000/docs (API 문서)
+- **웹 대시보드**: http://localhost:8000 (예측 결과 및 식물 관리)
 
 ### 5. 첫 예측 실행
 ```bash
