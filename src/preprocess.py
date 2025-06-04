@@ -58,7 +58,7 @@ def preprocess_weather_data(df):
     processed_df = processed_df.asfreq("H")
     
     # 피처 엔지니어링 (new_lightgbm2.py의 build_features 함수와 동일)
-    processed_df = build_features(processed_df)
+    processed_df = build_features(processed_df)  #파생변수 생성
     
     print(f"피처 엔지니어링 완료. 최종 데이터 shape: {processed_df.shape}")
     
