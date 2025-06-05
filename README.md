@@ -17,7 +17,7 @@
 
 ## 💻 프로젝트 소개
 
-### 🎯 프로젝트 개요 (프로젝트 기간: 약 2주 1일)
+### 🎯 프로젝트 개요 (프로젝트 기간: 약 2주)
 - **ASOS 기상관측 API**를 활용한 **기온 & 습도 동시 예측** MLOps 파이프라인 구축
 - **Apache Airflow** 기반 완전 자동화된 ML 워크플로우 구현  
 - **MLflow**를 통한 실험 관리 및 이중 모델(기온/습도) 버전 관리
@@ -171,17 +171,19 @@ graph TB
             PREPROCESS["Data Processing<br/>preprocess.py<br/>Feature Engineering"]
             TRAIN["Model Training<br/>train.py<br/>Dual LightGBM Models"]
             EVALUATE["Model Evaluation<br/>evaluate.py<br/>Performance Assessment"]
+            RELOAD["Model Reload<br/>API Call<br/>/reload_model"]
+            PREDICT["Daily Prediction<br/>API Call<br/>/predict"]
         end
         
         subgraph Serving["ML Platform & Serving"]
             MLFLOW["MLflow Server<br/>Experiment Tracking<br/>Model Registry<br/>Port 5000"]
-            FASTAPI["FastAPI Server<br/>Prediction API<br/>Web Dashboard<br/>Port 8000"]
+            FASTAPI["FastAPI Server<br/>Prediction API<br/>Port 8000"]
         end
     end
     
     subgraph Users["End Users"]
         WEB["Web Browser<br/>Weather Dashboard<br/>Plant Care System"]
-        API_CLIENT["API Clients<br/>Mobile Apps<br/>IoT Devices"]
+        API_LATEST["최신 예측 조회<br/>API Call<br/>/api/latest<br/>"]
     end
     
     KMA -->|Daily 2AM| INGEST
@@ -189,18 +191,22 @@ graph TB
     AIRFLOW --> PREPROCESS  
     AIRFLOW --> TRAIN
     AIRFLOW --> EVALUATE
+    AIRFLOW --> RELOAD
+    AIRFLOW --> PREDICT
     
     INGEST --> MINIO
     PREPROCESS --> MINIO
     TRAIN --> MLFLOW
     EVALUATE --> MLFLOW
+    RELOAD --> FASTAPI
+    PREDICT --> FASTAPI
     
     MLFLOW --> MINIO
     FASTAPI --> MLFLOW
     FASTAPI --> SQLITE
     
-    WEB --> FASTAPI
-    API_CLIENT --> FASTAPI
+    WEB --> API_LATEST
+    API_LATEST --> FASTAPI
     
     style KMA fill:#e1f5fe,stroke:#01579b,stroke-width:2px
     style MLFLOW fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
