@@ -56,7 +56,7 @@
 
 ---
 
-## 📁 프로젝트 구조 (요약)
+## 📁 프로젝트 구조
 
 ```
 mlops-weather-prediction/
