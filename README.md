@@ -60,16 +60,24 @@
 
 ```
 mlops-weather-prediction/
-├── src/                    # MLOps 핵심 로직
+├── src/
+│   ├── data_ingest.py      # 데이터 수집
+│   ├── preprocess.py       # 전처리 및 피처 엔지니어링
 │   ├── train.py            # 모델 학습
-│   ├── evaluate.py         # 성능 평가 및 배포
+│   ├── evaluate.py         # 성능 평가 및 자동 배포
 │   ├── predict_api.py      # FastAPI 예측 API
-│   ├── db_utils.py         # SQLite 연동
-├── dags/                   # Airflow DAG
+│   ├── s3_utils.py         # MinIO 연동
+│   └── db_utils.py         # SQLite DB 관리
+├── dags/
 │   └── weather_forecast_dag.py
-├── static/                 # 웹 UI 리소스
-├── predictions_data/       # 예측 결과 DB 저장
-├── docker-compose.yaml     # 전체 스택 오케스트레이션
+├── static/
+│   ├── index.html          # 웹 대시보드
+│   ├── happy_plant.png
+│   └── water_please.png
+├── predictions_data/
+│   └── predictions.db      # 예측 이력 DB
+├── docker-compose.yaml
+├── requirements.txt
 └── README.md
 ```
 
