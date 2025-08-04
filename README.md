@@ -133,8 +133,4 @@ mlops-weather-prediction/
 - 팀 프로젝트 원본 리포지토리: [팀 GitHub 링크](https://github.com/AIBootcamp13/mlops-cloud-project-mlops_5)  
 - 본 개인 리포지토리는 **개인 기여 및 학습 내용 중심으로 정리**됨
 
----
 
-## ⭐ 기텍버 방문 감사합니다!
-> 이 프로젝트가 도움이 되셨다면 ⭐를 눌러주세요!  
-> 문의: [GitHub @Lee-0624](https://github.com/Lee-0624)
