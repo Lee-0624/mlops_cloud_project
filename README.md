@@ -58,7 +58,7 @@
 
 ---
 
-## 📂 프로젝트 구조 (개인 리포지토리 기준)
+## 📂 프로젝트 구조
 
 ```
 mlops-weather-prediction/
@@ -131,6 +131,5 @@ mlops-weather-prediction/
 
 ## 📌 기타
 - 팀 프로젝트 원본 리포지토리: [팀 GitHub 링크](https://github.com/AIBootcamp13/mlops-cloud-project-mlops_5)  
-- 본 개인 리포지토리는 **개인 기여 및 학습 내용 중심으로 정리**됨
 
 
